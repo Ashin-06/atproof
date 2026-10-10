@@ -59,3 +59,14 @@ def test_wrong_did_document_rejected(tmp_path):
 def test_capture_live(tmp_path):
     meta = capture.capture(URI, str(tmp_path / "live"))
     assert meta["verdict_at_capture"] in ("present", "absent")
+
+
+def test_http_get_size_limit(monkeypatch):
+    class Resp:
+        headers = {}
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+        def read(self, n): return b"x" * n
+    monkeypatch.setattr(capture.urllib.request, "urlopen", lambda req, timeout: Resp())
+    with pytest.raises(ValueError, match="exceeds"):
+        capture.http_get("https://example.invalid/big", limit=1000)

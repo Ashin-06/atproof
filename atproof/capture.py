@@ -16,10 +16,16 @@ PLC = "https://plc.directory"
 UA = f"atproof/{__version__} (targeted evidence preservation)"
 
 
-def http_get(url: str, timeout: float = 30) -> tuple[bytes, dict]:
+MAX_BYTES = 64 << 20  # one record proof is kilobytes; refuse runaway responses
+
+
+def http_get(url: str, timeout: float = 30, limit: int = MAX_BYTES) -> tuple[bytes, dict]:
     req = urllib.request.Request(url, headers={"User-Agent": UA})
     with urllib.request.urlopen(req, timeout=timeout) as r:  # noqa: S310 (https URLs built below)
-        return r.read(), dict(r.headers)
+        body = r.read(limit + 1)
+        if len(body) > limit:
+            raise ValueError(f"response from {url} exceeds {limit} bytes")
+        return body, dict(r.headers)
 
 
 def identity_urls(did: str) -> dict:
