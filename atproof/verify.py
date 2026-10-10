@@ -129,7 +129,9 @@ def verify_deleted(inclusion: bytes, absence: bytes, identity, path: str) -> dic
     reasons = []
     if inc["verdict"] != "present":
         reasons.append(f"inclusion proof: {inc['verdict']} {inc['failures']}")
-    if ab["verdict"] != "absent":
+    if ab.get("mst", {}).get("status") == "present":
+        reasons.append("the record is still present in the later revision (not deleted)")
+    elif ab["verdict"] != "absent":
         reasons.append(f"absence proof: {ab['verdict']} {ab['failures']}")
     if inc.get("commit") and ab.get("commit"):
         if inc["commit"]["did"] != ab["commit"]["did"]:
@@ -178,6 +180,9 @@ def check_package(directory: str) -> dict:
     listed = {}
     for line in (d / "MANIFEST.sha256").read_text(encoding="utf-8").splitlines():
         digest, name = line.split("  ", 1)
+        if Path(name).name != name or name in ("", ".", ".."):
+            problems.append(f"unsafe name in manifest: {name!r}")
+            continue
         listed[name] = digest
         f = d / name
         if not f.exists():

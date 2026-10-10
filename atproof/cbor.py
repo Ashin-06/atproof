@@ -95,7 +95,14 @@ def _head(data: bytes, off: int) -> tuple[int, int, int]:
     raise ValueError(f"unsupported CBOR additional info {info} (indefinite length or reserved)")
 
 
-def _decode(data: bytes, off: int):
+MAX_DEPTH = 128  # atproto records are shallow; deep nesting is hostile input
+
+
+def _decode(data: bytes, off: int, depth: int = 0):
+    if depth > MAX_DEPTH:
+        raise ValueError("CBOR nesting too deep")
+    if off >= len(data):
+        raise ValueError("truncated CBOR")
     if data[off] in (0xF9, 0xFA, 0xFB):
         raise ValueError("floats are not allowed in atproto data")
     major, n, off = _head(data, off)
@@ -111,21 +118,21 @@ def _decode(data: bytes, off: int):
     if major == 4:
         out = []
         for _ in range(n):
-            v, off = _decode(data, off)
+            v, off = _decode(data, off, depth + 1)
             out.append(v)
         return out, off
     if major == 5:
         out = {}
         for _ in range(n):
-            k, off = _decode(data, off)
+            k, off = _decode(data, off, depth + 1)
             if not isinstance(k, str):
                 raise ValueError("map keys must be strings")
-            out[k], off = _decode(data, off)
+            out[k], off = _decode(data, off, depth + 1)
         return out, off
     if major == 6:
         if n != 42:
             raise ValueError(f"CBOR tag {n} not allowed (only 42)")
-        raw, off = _decode(data, off)
+        raw, off = _decode(data, off, depth + 1)
         if not isinstance(raw, bytes) or not raw.startswith(b"\x00"):
             raise ValueError("bad CID link")
         return CID(raw[1:]), off

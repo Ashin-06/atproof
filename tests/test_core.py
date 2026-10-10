@@ -151,3 +151,14 @@ def test_signed_repo_car_verifies():
     roots, back = cbor.read_car(car(commit, blocks))
     c = cbor.decode(back[roots[0]])
     assert keys.verify(mk, cbor.encode({x: v for x, v in c.items() if x != "sig"}), c["sig"])[0]
+
+
+def test_hostile_nesting_and_self_linking_node():
+    deep = b"\x81" * 5000 + b"\x00"  # 5000 nested one-element arrays
+    with pytest.raises(ValueError, match="too deep"):
+        cbor.decode(deep)
+    # A node stored under a CID it does not hash to, linking to that same CID: must not loop.
+    fake = CID.of(b"anything")
+    node = cbor.encode({"l": fake, "e": []})
+    r = mst.find({fake: node}, fake, "app.bsky.feed.post/x")
+    assert r["status"] == "unproven" and "does not match its CID" in r["problems"][0]

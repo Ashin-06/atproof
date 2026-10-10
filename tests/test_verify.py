@@ -52,7 +52,8 @@ def test_deleted_rejections():
     priv, mk, inc, ab = scenario()
     ident = plc(DID, ("2025-01-01T00:00:00.000Z", mk))
     assert verify.verify_deleted(ab, inc, ident, PATH)["verdict"] == "not proven"            # order swapped
-    assert verify.verify_deleted(inc, inc, ident, PATH)["verdict"] == "not proven"           # never removed
+    never = verify.verify_deleted(inc, inc, ident, PATH)                                      # never removed
+    assert never["verdict"] == "not proven" and "still present" in never["reasons"][0]
     wrong = plc("did:plc:someoneelse00000000000000", ("2025-01-01T00:00:00.000Z", mk))
     r = verify.verify_proof(inc, wrong, PATH)
     assert r["verdict"] == "failed" and any("identity is for" in f for f in r["failures"])
@@ -124,3 +125,22 @@ def test_corrupt_input_never_raises():
     for bad in (b"", b"\x00", inc[:40], inc[:-1] + bytes([inc[-1] ^ 1]), b"\xff" * 100, REAL_POST[: len(REAL_POST) // 2]):
         r = verify.verify_proof(bad, ident, PATH)
         assert r["verdict"] == "failed" and r["failures"], bad[:10]
+
+
+def test_package_rejects_path_traversal(tmp_path):
+    _, mk, inc, ab = scenario()
+    idf, incf, abf = _files(tmp_path, inc, ab, plc(DID, ("2025-01-01T00:00:00.000Z", mk)))
+    pkg = tmp_path / "pkg"
+    verify.build_package(str(pkg), PATH, idf, incf, abf)
+    (tmp_path / "secret.txt").write_text("outside")
+    with open(pkg / "MANIFEST.sha256", "a", encoding="utf-8") as f:
+        f.write("0" * 64 + "  ../secret.txt\n")
+    chk = verify.check_package(str(pkg))
+    assert chk["verdict"] == "package invalid" and any("unsafe name" in p for p in chk["problems"])
+
+
+def test_deep_cbor_in_car_is_a_failed_verdict():
+    from atproof.cbor import CID, write_car
+    blob = b"\x81" * 5000 + b"\x00"
+    r = verify.verify_proof(write_car([CID.of(blob)], {CID.of(blob): blob}), [], PATH)
+    assert r["verdict"] == "failed"

@@ -41,6 +41,9 @@ def find(blocks: dict, root, key: str) -> dict:
     while cid is not None:
         if cid not in blocks:
             return {"status": "unproven", "missing_node": str(cid), "path": path, "problems": problems}
+        if not cid.matches(blocks[cid]):  # an unverified node could point anywhere, even at itself
+            problems.append(f"{cid}: block does not match its CID")
+            return {"status": "unproven", "bad_node": str(cid), "path": path, "problems": problems}
         path.append(str(cid))
         node = decode(blocks[cid])
         ents = _entries(node)
