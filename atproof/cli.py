@@ -4,7 +4,7 @@ import json
 import sys
 from pathlib import Path
 
-from atproof import cbor, keys
+from atproof import cbor, keys, verify
 
 
 def _dump(obj):
@@ -27,10 +27,41 @@ def main(argv=None):
     p = argparse.ArgumentParser(prog="atproof", description=__doc__)
     sub = p.add_subparsers(dest="cmd", required=True)
     sub.add_parser("inspect", help="summarise a CAR file: roots, block integrity, commit").add_argument("car")
+    v = sub.add_parser("verify", help="verify one proof CAR for a record path")
+    v.add_argument("car")
+    v.add_argument("--identity", required=True, help="did:plc audit log JSON (or DID document)")
+    v.add_argument("--uri", required=True, help="at://<did>/<collection>/<rkey>")
+    d = sub.add_parser("deleted", help="verify that a record existed and was later removed")
+    d.add_argument("--inclusion", required=True)
+    d.add_argument("--absence", required=True)
+    d.add_argument("--identity", required=True)
+    d.add_argument("--uri", required=True)
+    pk = sub.add_parser("package", help="build an evidence package folder (inputs, reports, SHA-256 manifest)")
+    pk.add_argument("--out", required=True, help="new folder (must not exist)")
+    pk.add_argument("--inclusion", required=True)
+    pk.add_argument("--absence")
+    pk.add_argument("--identity", required=True)
+    pk.add_argument("--uri", required=True)
+    pk.add_argument("--note", default="", help="case reference / purpose, stored in the report")
+    sub.add_parser("check-package", help="re-verify a package from scratch").add_argument("dir")
     a = p.parse_args(argv)
     try:
         if a.cmd == "inspect":
             _dump(inspect(a.car))
+        elif a.cmd == "verify":
+            _, path = verify.parse_uri(a.uri)
+            ident = json.loads(Path(a.identity).read_text(encoding="utf-8"))
+            _dump({**verify.verify_proof(Path(a.car).read_bytes(), ident, path), "limits": verify.LIMITS})
+        elif a.cmd == "deleted":
+            _, path = verify.parse_uri(a.uri)
+            ident = json.loads(Path(a.identity).read_text(encoding="utf-8"))
+            _dump(verify.verify_deleted(Path(a.inclusion).read_bytes(), Path(a.absence).read_bytes(), ident, path))
+        elif a.cmd == "package":
+            _, path = verify.parse_uri(a.uri)
+            rep = verify.build_package(a.out, path, a.identity, a.inclusion, a.absence, a.note)
+            print(f"{rep['verdict']}: package written to {a.out}")
+        elif a.cmd == "check-package":
+            _dump(verify.check_package(a.dir))
     except (OSError, ValueError, KeyError) as e:
         p.error(f"{a.cmd}: {type(e).__name__}: {e}")
 
