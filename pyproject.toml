@@ -1,0 +1,19 @@
+[project]
+name = "atproof"
+version = "0.1.0"
+description = "Offline-verifiable evidence that a Bluesky / AT Protocol post existed and was later deleted"
+requires-python = ">=3.10"
+dependencies = ["cryptography>=42"]
+
+[project.optional-dependencies]
+test = ["pytest"]
+
+[project.scripts]
+atproof = "atproof.cli:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["atproof*"]
