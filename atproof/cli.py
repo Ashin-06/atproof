@@ -4,7 +4,7 @@ import json
 import sys
 from pathlib import Path
 
-from atproof import cbor, keys, verify
+from atproof import capture, cbor, keys, verify
 
 
 def _dump(obj):
@@ -44,6 +44,9 @@ def main(argv=None):
     pk.add_argument("--uri", required=True)
     pk.add_argument("--note", default="", help="case reference / purpose, stored in the report")
     sub.add_parser("check-package", help="re-verify a package from scratch").add_argument("dir")
+    cp = sub.add_parser("capture", help="preserve ONE record's proof + identity history from the network")
+    cp.add_argument("--uri", required=True, help="at://<did>/<collection>/<rkey> (a DID, not a handle)")
+    cp.add_argument("--out", required=True, help="new folder (must not exist)")
     a = p.parse_args(argv)
     try:
         if a.cmd == "inspect":
@@ -62,7 +65,9 @@ def main(argv=None):
             print(f"{rep['verdict']}: package written to {a.out}")
         elif a.cmd == "check-package":
             _dump(verify.check_package(a.dir))
-    except (OSError, ValueError, KeyError) as e:
+        elif a.cmd == "capture":
+            _dump(capture.capture(a.uri, a.out))
+    except (OSError, ValueError, KeyError) as e:  # incl. urllib errors (OSError subclasses)
         p.error(f"{a.cmd}: {type(e).__name__}: {e}")
 
 
