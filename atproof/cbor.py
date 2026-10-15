@@ -127,6 +127,8 @@ def _decode(data: bytes, off: int, depth: int = 0):
             k, off = _decode(data, off, depth + 1)
             if not isinstance(k, str):
                 raise ValueError("map keys must be strings")
+            if k in out:
+                raise ValueError(f"duplicate CBOR map key: {k!r}")
             out[k], off = _decode(data, off, depth + 1)
         return out, off
     if major == 6:
@@ -192,8 +194,13 @@ def read_car(data: bytes) -> tuple[list[CID], dict[CID, bytes]]:
     """Roots and blocks of a CAR v1 file. Block integrity is checked separately (verify_blocks)."""
     hlen, off = read_varint(data, 0)
     header = decode(data[off:off + hlen])
+    if not isinstance(header, dict):
+        raise ValueError("CAR header must be a map")
     if header.get("version") != 1:
         raise ValueError(f"unsupported CAR version {header.get('version')}")
+    roots = header.get("roots", [])
+    if not isinstance(roots, list) or any(not isinstance(root, CID) for root in roots):
+        raise ValueError("CAR roots must be a list of CID links")
     off += hlen
     blocks = {}
     while off < len(data):
@@ -204,7 +211,7 @@ def read_car(data: bytes) -> tuple[list[CID], dict[CID, bytes]]:
         clen = cid_length(data, off)
         blocks[CID(data[off:off + clen])] = bytes(data[off + clen:end])
         off = end
-    return list(header.get("roots") or []), blocks
+    return roots, blocks
 
 
 def write_car(roots: list[CID], blocks: dict[CID, bytes]) -> bytes:

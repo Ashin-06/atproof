@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 from helpers import car, new_key, signed_repo, tid
 
-from atproof import verify
+from atproof import cbor, verify
 
 FIX = Path(__file__).parent / "fixtures"
 REAL_POST = (FIX / "bsky-app-post-3mxhdhodv222n.car").read_bytes()
@@ -37,6 +37,14 @@ def test_real_proofs():
     assert verify.verify_proof(REAL_ABSENT, AUDIT, "app.bsky.feed.post/3zzzzzzzzzzzz")["verdict"] == "absent"
     assert verify.parse_uri("at://did:plc:z72i7hdynmk6r22z27h6tvur/app.bsky.feed.post/3mxhdhodv222n") == \
         ("did:plc:z72i7hdynmk6r22z27h6tvur", "app.bsky.feed.post/3mxhdhodv222n")
+
+
+@pytest.mark.parametrize("header", [[], None, 1])
+def test_malformed_car_header_returns_failed_verdict(header):
+    raw = cbor.encode(header)
+    result = verify.verify_proof(cbor.varint(len(raw)) + raw, AUDIT, PATH)
+    assert result["verdict"] == "failed"
+    assert result["failures"]
 
 
 @pytest.mark.parametrize("curve", ["secp256k1", "p256"])

@@ -58,6 +58,18 @@ def test_cbor_roundtrip_and_strictness():
             cbor.decode(bad)
 
 
+def test_duplicate_cbor_keys_are_rejected():
+    with pytest.raises(ValueError, match="duplicate"):
+        cbor.decode(b'\xa2\x61a\x01\x61a\x02')
+
+
+@pytest.mark.parametrize("header", [[], None, 1, {"version": 1, "roots": "not-a-list"}])
+def test_malformed_car_header_is_rejected(header):
+    raw = cbor.encode(header)
+    with pytest.raises(ValueError, match="CAR"):
+        cbor.read_car(cbor.varint(len(raw)) + raw)
+
+
 def test_cid_string_and_tamper_detection():
     real = CID.parse(EXPECTED["cid"])
     assert str(real) == EXPECTED["cid"] and real.codec == cbor.DAG_CBOR
