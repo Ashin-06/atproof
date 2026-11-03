@@ -1,6 +1,6 @@
 # ATProof: Verifiable Evidence of Deleted Bluesky Posts
 
-**Project 4 of 5** · Status: research complete, tool built and tested (29 tests + live check), lab experiments E1-E9 pending
+**Project 4 of 5** · Status: research complete, tool and verification API built and tested (42 tests + live check), lab experiments E1-E9 pending
 Research cut-off: 10 Oct 2026
 
 ## What this is
@@ -43,14 +43,17 @@ On accounts hosted by Bluesky (most accounts), **the server holds the signing ke
 │   ├── keys.py                  secp256k1 + P-256 low-S signatures, multikeys, TIDs, PLC key history
 │   ├── verify.py                proof verification, deleted-post check, evidence packages
 │   ├── capture.py               preserve ONE record's proof + identity history from the network
+│   ├── api.py                   verification API with a log of every check
+│   ├── ops.py, db.py            settings, API keys, limits, logs, metrics; database and migrations
 │   └── cli.py                   `atproof` command
-├── tests/                       29 tests; fixtures = real @bsky.app proofs (10 Oct 2026)
+├── docs/                        threat model, runbook
+├── tests/                       42 tests; fixtures = real @bsky.app proofs (10 Oct 2026)
 └── pyproject.toml
 ```
 
 ## Tool
 ```bash
-python -m venv .venv && .venv/Scripts/pip install -e .[test]   # Linux/macOS: .venv/bin/pip
+python -m venv .venv && .venv/Scripts/pip install -r requirements-dev.lock -e .   # Linux/macOS: .venv/bin/pip
 pytest -q                     # ATPROOF_LIVE=1 also runs one live capture
 ```
 
@@ -87,5 +90,37 @@ Use the identity log captured **last** (step 2): the audit log is append-only, s
 - **did:web** accounts have no public key history; keep your own dated copy of the DID document.
 - **Timing** is only as trustworthy as the server's claims; add an RFC 3161 timestamp over `MANIFEST.sha256` if timing matters.
 
+## Verification API
+
+`atproof serve` (or the container image, `docker build -t atproof .`, see [docs/runbook.md](docs/runbook.md)) verifies submitted proofs offline.
+
+| Endpoint | Purpose |
+|---|---|
+| `POST /v1/verify` | one inclusion or absence proof CAR (base64) for a record URI, with the identity log |
+| `POST /v1/deleted` | an inclusion proof and a later absence proof: did the record exist and then disappear? |
+| `GET /v1/verifications`, `/v1/verifications/{id}` | the log: who checked which inputs (by SHA-256), the URI and the verdict |
+| `GET /healthz`, `/readyz`, `/metrics` | health, readiness and Prometheus metrics |
+
+The API never contacts a PDS or the PLC directory; `capture` stays a command-line step, so callers can't make the server fetch arbitrary URLs. Submitted proofs are not stored. API keys carry a role: `examiner`, `viewer`, `monitor`. Create one with `python -m atproof.ops keygen`.
+
+| Variable | Purpose |
+|---|---|
+| `ATPROOF_ENV=production` | refuse to start without hashed API keys and a database |
+| `ATPROOF_API_KEYS` / `ATPROOF_KEYS_FILE` | hashed API keys with roles |
+| `ATPROOF_DATABASE_URL` | the verification log: `sqlite:///...` or `postgresql://...` |
+
+## Limitations
+
+- On accounts hosted by Bluesky the server holds the signing key: a valid proof shows what the host published under the account, not who wrote it.
+- No real deletion has been captured end to end yet (E1).
+- The verification log records input hashes but is not signed or hash-chained.
+- The methods have not been tested in court, and the code has not had an independent security review.
+
+See [SECURITY.md](SECURITY.md) and [docs/threat-model.md](docs/threat-model.md).
+
 ## Ethics in one line
 For preserving **specific** posts for a legitimate purpose. There is no firehose collector and no bulk mode, by design. Details in [research/04](research/04-legal-ethics.md).
+
+## License
+
+MIT. See [LICENSE](LICENSE).
