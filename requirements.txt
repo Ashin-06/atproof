@@ -1,0 +1,8 @@
+# Runtime dependencies; pinned versions are in requirements.lock
+cryptography
+fastapi
+uvicorn
+pydantic
+sqlalchemy
+psycopg[binary]
+prometheus-client

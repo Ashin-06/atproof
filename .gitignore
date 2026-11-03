@@ -6,3 +6,6 @@ build/
 dist/
 .venv/
 cases/
+.coverage
+coverage.xml
+.ruff_cache/
