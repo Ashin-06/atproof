@@ -70,3 +70,13 @@ def test_http_get_size_limit(monkeypatch):
     monkeypatch.setattr(capture.urllib.request, "urlopen", lambda req, timeout: Resp())
     with pytest.raises(ValueError, match="exceeds"):
         capture.http_get("https://example.invalid/big", limit=1000)
+
+
+def test_only_https_is_fetched():
+    import pytest
+
+    from atproof import capture
+
+    for url in ("file:///etc/passwd", "http://plc.directory/x", "ftp://host/x"):
+        with pytest.raises(ValueError, match="non-https"):
+            capture.http_get(url)

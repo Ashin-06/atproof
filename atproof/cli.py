@@ -47,7 +47,13 @@ def main(argv=None):
     cp = sub.add_parser("capture", help="preserve ONE record's proof + identity history from the network")
     cp.add_argument("--uri", required=True, help="at://<did>/<collection>/<rkey> (a DID, not a handle)")
     cp.add_argument("--out", required=True, help="new folder (must not exist)")
+    sv = sub.add_parser("serve", help="verification API (settings: ATPROOF_* environment variables)")
+    sv.add_argument("--host", help="default ATPROOF_HOST or 127.0.0.1; any other address needs API keys")
+    sv.add_argument("--port", type=int, help="default ATPROOF_PORT or 8104")
+    sub.add_parser("migrate", help="apply database migrations to ATPROOF_DATABASE_URL")
     a = p.parse_args(argv)
+    if a.cmd in ("serve", "migrate"):
+        return _service(a)
     try:
         if a.cmd == "inspect":
             _dump(inspect(a.car))
@@ -69,6 +75,34 @@ def main(argv=None):
             _dump(capture.capture(a.uri, a.out))
     except (OSError, ValueError, KeyError) as e:  # incl. urllib errors (OSError subclasses)
         p.error(f"{a.cmd}: {type(e).__name__}: {e}")
+
+
+def _service(a) -> int:
+    import os
+
+    from atproof import db, ops
+
+    if a.cmd == "serve":
+        for flag, var in (("host", "ATPROOF_HOST"), ("port", "ATPROOF_PORT")):
+            if getattr(a, flag) is not None:
+                os.environ[var] = str(getattr(a, flag))
+    try:
+        settings = ops.load_settings()  # fail here, before uvicorn, with a readable message
+    except ops.ConfigError as e:
+        print(f"configuration error: {e}", file=sys.stderr)
+        return 1
+    if a.cmd == "migrate":
+        print(*(db.migrate(db.engine(settings.database_url)) or ["up to date"]), sep="\n")
+        return 0
+    import uvicorn
+
+    ops.setup_logging(settings.log_level)
+    try:
+        uvicorn.run("atproof.api:app", host=settings.host, port=settings.port, log_config=None, access_log=False)
+    except ops.ConfigError as e:  # checks the API module makes when it loads
+        print(f"configuration error: {e}", file=sys.stderr)
+        return 1
+    return 0
 
 
 if __name__ == "__main__":

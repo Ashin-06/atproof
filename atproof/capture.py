@@ -20,8 +20,10 @@ MAX_BYTES = 64 << 20  # one record proof is kilobytes; refuse runaway responses
 
 
 def http_get(url: str, timeout: float = 30, limit: int = MAX_BYTES) -> tuple[bytes, dict]:
+    if not url.startswith("https://"):  # URLs come from DID documents: never file:, ftp: or plain http
+        raise ValueError(f"refusing non-https URL: {url[:80]}")
     req = urllib.request.Request(url, headers={"User-Agent": UA})
-    with urllib.request.urlopen(req, timeout=timeout) as r:  # noqa: S310 (https URLs built below)
+    with urllib.request.urlopen(req, timeout=timeout) as r:  # nosec B310 - https only, checked above
         body = r.read(limit + 1)
         if len(body) > limit:
             raise ValueError(f"response from {url} exceeds {limit} bytes")
