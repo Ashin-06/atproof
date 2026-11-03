@@ -5,11 +5,11 @@ How to deploy and operate the verification service. Commands assume the reposito
 ## Deploy
 
 ```bash
-docker build -t atproof:1.0.0 .
+docker build -t atproof:1.0.1 .
 python -m atproof.ops keygen            # one API key per examiner, viewer and monitor
 docker run -d --name atproof -p 8104:8104 -v atproof-data:/data \
   -e ATPROOF_KEYS_FILE=/run/secrets/atproof-keys.json \
-  atproof:1.0.0
+  atproof:1.0.1
 curl -fsS http://127.0.0.1:8104/readyz
 ```
 

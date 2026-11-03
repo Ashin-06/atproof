@@ -2,6 +2,13 @@
 
 All notable changes to this project. Versions follow [semantic versioning](https://semver.org/).
 
+## 1.0.1 — 2026-11-03
+
+### Fixed
+- Duplicate keys in a CBOR map are rejected instead of the last one silently winning.
+- A CAR file whose header is not a map, or whose roots are not a list of CIDs, is rejected; proof
+  verification reports it as a failed verdict instead of an error.
+
 ## 1.0.0 — 2026-11-03
 
 ### Added

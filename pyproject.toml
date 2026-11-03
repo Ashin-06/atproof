@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "atproof"
-version = "1.0.0"
+version = "1.0.1"
 description = "Offline-verifiable evidence that a Bluesky / AT Protocol post existed and was later deleted"
 readme = "README.md"
 license = "MIT"

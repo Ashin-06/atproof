@@ -1,6 +1,6 @@
 # ATProof: Verifiable Evidence of Deleted Bluesky Posts
 
-**Project 4 of 5** · Status: research complete, tool and verification API built and tested (42 tests + live check), lab experiments E1-E9 pending
+**Project 4 of 5** · Status: research complete, tool and verification API built and tested (50 tests + live check), lab experiments E1-E9 pending
 Research cut-off: 10 Oct 2026
 
 ## What this is
@@ -47,7 +47,7 @@ On accounts hosted by Bluesky (most accounts), **the server holds the signing ke
 │   ├── ops.py, db.py            settings, API keys, limits, logs, metrics; database and migrations
 │   └── cli.py                   `atproof` command
 ├── docs/                        threat model, runbook
-├── tests/                       42 tests; fixtures = real @bsky.app proofs (10 Oct 2026)
+├── tests/                       50 tests; fixtures = real @bsky.app proofs (10 Oct 2026)
 └── pyproject.toml
 ```
 

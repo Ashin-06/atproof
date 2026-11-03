@@ -35,7 +35,7 @@ ops.setup_logging(settings.log_level)
 engine = db.connect(settings.database_url)
 _lock = threading.Lock()
 
-app = FastAPI(title="ATProof verification service", version="1.0.0")
+app = FastAPI(title="ATProof verification service", version="1.0.1")
 ops.install(app, settings, {"database": lambda: engine.connect().close()})
 
 CAR_B64 = Field(..., min_length=4, max_length=ops.MAX_BODY_BYTES, description="the CAR file, base64-encoded")
