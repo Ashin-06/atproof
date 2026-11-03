@@ -53,7 +53,7 @@ On accounts hosted by Bluesky (most accounts), **the server holds the signing ke
 
 ## Tool
 ```bash
-python -m venv .venv && .venv/Scripts/pip install -r requirements-dev.lock -e .   # Linux/macOS: .venv/bin/pip
+python -m venv .venv && .venv/Scripts/python -m pip install -r requirements-dev.lock -e .   # Linux/macOS: .venv/bin/python
 pytest -q                     # ATPROOF_LIVE=1 also runs one live capture
 ```
 
